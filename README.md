@@ -21,7 +21,7 @@ Install location (build.sh chooses it):
 |---|---|
 | 8.13 and later | `$libdir/vips-modules-X.Y/vips-isyntax.so` |
 | 8.10 - 8.12 | `$libdir/vips-plugins-X.Y/vips-isyntax.so` |
-| 8.9 and older | `$prefix/lib/vips-plugins-X.Y/vips-isyntax.plg` |
+| 8.9 and older | `$libdir/vips-plugins-X.Y/vips-isyntax.plg` (only `.plg` files are loaded) |
 
 The plugin must be compiled against the same libvips version that loads it. pyvips with `[binary]`
 uses its own libvips and never sees system plugins; use plain `pyvips` on the system libvips.

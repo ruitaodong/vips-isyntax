@@ -13,7 +13,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 COPY build.sh vips-isyntax.c isyntax-crop.c test_isyntax.sh /src/
 # build.sh installs where this libvips looks for plugins:
-#   8.15: <libdir>/vips-modules-8.15/   8.12: <libdir>/vips-plugins-8.12/   8.9: /usr/lib/vips-plugins-8.9/*.plg
+#   8.15: <libdir>/vips-modules-8.15/   8.12: <libdir>/vips-plugins-8.12/   8.9: <libdir>/vips-plugins-8.9/*.plg
 RUN DESTDIR=/out bash /src/build.sh \
  && install -D -m 0755 /src/isyntax-crop /out/usr/local/bin/isyntax-crop \
  && install -D -m 0755 /src/test_isyntax.sh /out/usr/local/bin/test_isyntax.sh

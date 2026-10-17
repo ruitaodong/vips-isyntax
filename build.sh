@@ -25,7 +25,9 @@ if (( maj > 8 || (maj == 8 && min >= 13) )); then
 elif (( min >= 10 )); then
   dest="$libdir/vips-plugins-$maj.$min"; name=vips-isyntax.so
 else
-  dest="$prefix/lib/vips-plugins-$maj.$min"; name=vips-isyntax.plg   # 8.9 and older: .plg suffix
+  # 8.9 and older: same directory, but only files ending in .plg are loaded. (libvips uses its
+  # configured libdir when it runs from its configured prefix, e.g. /usr/lib/x86_64-linux-gnu on Ubuntu.)
+  dest="$libdir/vips-plugins-$maj.$min"; name=vips-isyntax.plg
 fi
 
 echo "== libisyntax ${LIBISYNTAX_COMMIT:0:7}"

@@ -35,3 +35,27 @@ Notes
 - Tested here: builds and registers with libvips 8.9, 8.12 and 8.15; error handling on invalid files.
   Not yet tested on a real iSyntax slide: run test_isyntax.sh on one, e.g. the public test slide at
   https://zenodo.org/record/5037046/files/testslide.isyntax?download=1
+
+## Docker images
+
+`docker/Dockerfile` builds libvips with the plugin for Ubuntu focal (20.04, libvips 8.9), jammy (22.04, 8.12)
+or noble (24.04, 8.15). The image contains the `vips` command-line tools, pyvips on the same libvips (so Python
+sees the plugin too), `isyntax-crop` and `test_isyntax.sh`. The build fails if the plugin isn't registered.
+
+```bash
+docker build -f docker/Dockerfile --build-arg UBUNTU=noble -t vips-isyntax-noble .
+docker run --rm -v "$PWD":/data vips-isyntax-noble vipsheader -a slide.isyntax
+docker run --rm -v "$PWD":/data vips-isyntax-noble test_isyntax.sh slide.isyntax
+```
+
+Pushing a git tag runs `.github/workflows/build-images.yml`, which builds all three releases in parallel and
+publishes them under the tag's exact name:
+
+```
+ghcr.io/ruitaodong/vips-isyntax-focal:<tag>
+ghcr.io/ruitaodong/vips-isyntax-jammy:<tag>
+ghcr.io/ruitaodong/vips-isyntax-noble:<tag>
+```
+
+New packages on ghcr.io are private: make each one public once (GitHub → Packages → vips-isyntax-&lt;release&gt;
+→ Package settings → Change visibility) so clusters can pull without credentials.

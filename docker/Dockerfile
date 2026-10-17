@@ -1,33 +1,43 @@
-# Slide colour conversion: libvips 8.15 (Ubuntu 24.04 package), pyvips with bundled libvips 8.18,
-# LittleCMS tools (tificc -c0 = exact device link) and libtiff tools for checks.
-#   docker build -t slide-vips .
-#   docker run --rm -v "$PWD":/data -w /data slide-vips convert_upsample.sh in.svs out.tif 0.2475
-FROM ubuntu:24.04
+# libvips + the vips-isyntax plugin on Ubuntu focal (20.04, libvips 8.9), jammy (22.04, 8.12) or noble (24.04, 8.15).
+# Build from the repository root:
+#   docker build -f docker/Dockerfile --build-arg UBUNTU=noble -t vips-isyntax-noble .
+#   docker run --rm -v "$PWD":/data vips-isyntax-noble vipsheader -a slide.isyntax
+#   docker run --rm -v "$PWD":/data vips-isyntax-noble test_isyntax.sh slide.isyntax
+ARG UBUNTU=noble
 
+# ---- build stage: libisyntax + the plugin, compiled against this release's libvips ----
+FROM ubuntu:${UBUNTU} AS build
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      libvips-tools \
-      liblcms2-utils \
-      libtiff-tools \
-      python3 python3-venv \
-      ca-certificates \
+ && apt-get install -y --no-install-recommends build-essential cmake curl ca-certificates pkg-config libvips-dev \
+ && rm -rf /var/lib/apt/lists/*
+COPY build.sh vips-isyntax.c isyntax-crop.c test_isyntax.sh /src/
+# build.sh installs where this libvips looks for plugins:
+#   8.15: <libdir>/vips-modules-8.15/   8.12: <libdir>/vips-plugins-8.12/   8.9: /usr/lib/vips-plugins-8.9/*.plg
+RUN DESTDIR=/out bash /src/build.sh \
+ && install -D -m 0755 /src/isyntax-crop /out/usr/local/bin/isyntax-crop \
+ && install -D -m 0755 /src/test_isyntax.sh /out/usr/local/bin/test_isyntax.sh
+
+# ---- runtime image ----
+FROM ubuntu:${UBUNTU}
+ENV DEBIAN_FRONTEND=noninteractive
+# libvips-tools pulls in the right library package (libvips42 on focal/jammy, libvips42t64 on noble)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libvips-tools python3 python3-venv ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-# pyvips in a venv (Ubuntu 24.04 blocks system-wide pip); [binary] brings its own libvips 8.18,
-# independent of the system libvips used by the vips command line.
+COPY --from=build /out/ /
+
+# pyvips WITHOUT [binary]: it uses the system libvips, so it sees the plugin
+# (pyvips[binary] brings its own libvips, which never loads system plugins)
 RUN python3 -m venv /opt/venv \
- && /opt/venv/bin/pip install --no-cache-dir "pyvips[binary]" numpy
+ && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
+ && /opt/venv/bin/pip install --no-cache-dir pyvips
 ENV PATH=/opt/venv/bin:$PATH
 
-# Scripts and profiles (put them next to this Dockerfile before building)
-COPY convert_upsample.sh convert_batch.sh convert_slide.py /opt/slide/
-COPY profiles/ /opt/slide/profiles/
-RUN chmod +x /opt/slide/*.sh /opt/slide/*.py \
- && ln -s /opt/slide/convert_upsample.sh /usr/local/bin/convert_upsample.sh \
- && ln -s /opt/slide/convert_batch.sh /usr/local/bin/convert_batch.sh \
- && ln -s /opt/slide/convert_slide.py /usr/local/bin/convert_slide.py
+# fail the build if the plugin isn't visible to the CLI or to Python
+RUN vips --version \
+ && vips -l | grep -q isyntaxload \
+ && python3 -c "import pyvips, sys; print('pyvips on libvips', pyvips.version(0), pyvips.version(1)); sys.exit(0 if pyvips.type_find('VipsOperation', 'isyntaxload') else 1)"
 
-# No LD_LIBRARY_PATH: everything comes from the distribution or the pyvips wheel.
-ENV SLIDE_PROFILES=/opt/slide/profiles
 WORKDIR /data

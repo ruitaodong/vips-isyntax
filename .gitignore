@@ -1,0 +1,4 @@
+# build.sh outputs
+vips-isyntax.so
+vips-isyntax.plg
+isyntax-crop

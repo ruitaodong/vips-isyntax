@@ -57,5 +57,11 @@ ghcr.io/ruitaodong/vips-isyntax-jammy:<tag>
 ghcr.io/ruitaodong/vips-isyntax-noble:<tag>
 ```
 
+The last build step runs `docker/check-plugin.sh`, which prints the plugin files, libvips's own loading messages
+and the pyvips result, so a failure can be diagnosed from the job log alone.
+
+libisyntax itself compiles with `-march=native`; build.sh removes that so the plugin runs on any x86-64 CPU,
+not just the build machine's. Set `LIBISYNTAX_MARCH` (e.g. `x86-64-v3`, GCC 11+) to target newer CPUs.
+
 New packages on ghcr.io are private: make each one public once (GitHub → Packages → vips-isyntax-&lt;release&gt;
 → Package settings → Change visibility) so clusters can pull without credentials.

@@ -6,6 +6,7 @@
 #   bash build.sh            # build + install (run as root, or set DESTDIR)
 #   bash build.sh --no-install
 #   LIBISYNTAX_COMMIT=<sha> bash build.sh
+#   LIBISYNTAX_MARCH=x86-64-v3 bash build.sh   # optional CPU target (default: generic x86-64)
 set -euo pipefail
 
 LIBISYNTAX_COMMIT=${LIBISYNTAX_COMMIT:-92471dbf6c70a6736e53e1e45564b170b74a81c1}
@@ -35,6 +36,11 @@ src=$(echo "$work"/libisyntax-*)
 sed -i 's|^#define console_print printf$|#define console_print(...) fprintf(stderr, __VA_ARGS__)|; s|if (is_verbose_mode) fprintf(stdout, __VA_ARGS__)|if (is_verbose_mode) fprintf(stderr, __VA_ARGS__)|' \
   "$src/src/platform/common.h"
 grep -q 'define console_print(...) fprintf(stderr' "$src/src/platform/common.h" || { echo "patch failed" >&2; exit 1; }
+# libisyntax compiles with -march=native on x86, i.e. for the build machine's exact CPU; a plugin built
+# on a CI runner could then crash (illegal instruction) on other machines. Build for a portable target
+# instead: generic x86-64 by default, or e.g. LIBISYNTAX_MARCH=x86-64-v3 (needs GCC 11+, AVX2 CPUs).
+sed -i "s| -march=native|${LIBISYNTAX_MARCH:+ -march=$LIBISYNTAX_MARCH}|" "$src/CMakeLists.txt"
+if grep -q -- '-march=native' "$src/CMakeLists.txt"; then echo "removing -march=native failed" >&2; exit 1; fi
 cmake -S "$src" -B "$work/build" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON >/dev/null
 cmake --build "$work/build" --target isyntax -j"$(nproc)" >/dev/null
 

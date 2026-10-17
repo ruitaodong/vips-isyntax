@@ -35,9 +35,8 @@ RUN python3 -m venv /opt/venv \
  && /opt/venv/bin/pip install --no-cache-dir pyvips
 ENV PATH=/opt/venv/bin:$PATH
 
-# fail the build if the plugin isn't visible to the CLI or to Python
-RUN vips --version \
- && vips -l | grep -q isyntaxload \
- && python3 -c "import pyvips, sys; print('pyvips on libvips', pyvips.version(0), pyvips.version(1)); sys.exit(0 if pyvips.type_find('VipsOperation', 'isyntaxload') else 1)"
+# fail the build if the plugin isn't visible to the CLI or to Python; prints why if not
+COPY docker/check-plugin.sh /usr/local/bin/check-plugin.sh
+RUN chmod +x /usr/local/bin/check-plugin.sh && check-plugin.sh
 
 WORKDIR /data
